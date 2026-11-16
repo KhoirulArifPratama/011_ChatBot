@@ -56,8 +56,14 @@ chatForm.addEventListener("submit", async (event) => {
       }),
     });
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || "Terjadi kesalahan");
+      let errorMsg = "Terjadi kesalahan pada server";
+      try {
+        const errorData = await response.json();
+        errorMsg = errorData.error || errorMsg;
+      } catch (_) {
+        errorMsg = `Error ${response.status}: Gagal menghubungi server`;
+      }
+      throw new Error(errorMsg);
     }
 
     // =========================
