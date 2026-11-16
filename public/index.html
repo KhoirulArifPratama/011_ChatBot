@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TimTam</title>
+    <link rel="icon" type="image/png" href="logo.png">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="chat-container">
+        <div class="chat-header">
+            <div class="chat-header-avatar">
+                <img src="logo.png" alt="TimTam Logo">
+                <span class="status-dot"></span>
+            </div>
+            <div class="chat-header-info">
+                <h1>TimTam</h1>
+                <span class="chat-header-subtitle">Online · siap membantu</span>
+            </div>
+        </div>
+
+        <div id="chat-box" class="chat-box">
+            <div class="message bot">
+                <div class="message-content">
+                    Halo! Saya TimTam. Ada yang bisa saya bantu hari ini?
+                </div>
+            </div>
+        </div>
+
+        <form id="chat-form" class="chat-form">
+
+            <input
+                type="text"
+                id="user-input"
+                placeholder="Ketik pesan untuk TimTam..."
+                autocomplete="off"
+                required
+            >
+
+            <button type="submit">
+                Kirim
+            </button>
+
+        </form>
+
+    </div>
+
+    <script src="script.js"></script>
+
+</body>
+</html>
