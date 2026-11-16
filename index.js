@@ -6,13 +6,14 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Daftar model gratis — loop failover manual, TANPA kirim array "models"
+// ke OpenRouter (OpenRouter hanya izinkan max 3 item, dan itu fitur berbayar)
 const FREE_MODELS = [
     "openrouter/free",
-    "google/gemini-2.0-flash-exp:free",
     "meta-llama/llama-3.3-70b-instruct:free",
     "meta-llama/llama-3.2-3b-instruct:free",
-    "qwen/qwen-2.5-coder-32b-instruct:free",
     "mistralai/mistral-7b-instruct:free",
+    "qwen/qwen-2.5-coder-32b-instruct:free",
     "cognitivecomputations/dolphin3.0-r1-mistral-24b:free"
 ];
 
@@ -46,7 +47,7 @@ app.post(["/api/chat", "/chat"], async (req, res) => {
         let response = null;
         let lastErrorText = "";
 
-        // Coba model gratis satu per satu jika terjadi rate-limit (429) atau error upstream
+        // Loop failover — coba satu per satu, TIDAK kirim field "models" ke API
         for (const candidateModel of FREE_MODELS) {
             try {
                 response = await fetch(
@@ -59,7 +60,6 @@ app.post(["/api/chat", "/chat"], async (req, res) => {
                         },
                         body: JSON.stringify({
                             model: candidateModel,
-                            models: FREE_MODELS,
                             messages: outboundMessages,
                             temperature: 0.7,
                             max_tokens: 1000,
@@ -69,20 +69,21 @@ app.post(["/api/chat", "/chat"], async (req, res) => {
                 );
 
                 if (response.ok) {
-                    break;
+                    break; // sukses, lanjut streaming
                 }
 
                 lastErrorText = await response.text();
                 console.warn(`Model ${candidateModel} gagal (${response.status}):`, lastErrorText);
 
                 if (response.status === 429 || response.status >= 500) {
-                    continue;
+                    continue; // coba model berikutnya
                 } else {
-                    break;
+                    break; // error lain (401, 400 dsb) → berhenti
                 }
             } catch (err) {
                 console.warn(`Error request ke ${candidateModel}:`, err.message);
                 lastErrorText = err.message;
+                // jaringan error → coba model berikutnya
             }
         }
 
@@ -90,12 +91,8 @@ app.post(["/api/chat", "/chat"], async (req, res) => {
             let friendlyMessage = "Server AI sedang sibuk. Silakan coba kirim pesan beberapa saat lagi.";
             try {
                 const parsed = JSON.parse(lastErrorText);
-                if (parsed.error && parsed.error.message) {
-                    if (parsed.error.code === 429 || lastErrorText.includes("rate-limited")) {
-                        friendlyMessage = "Layanan sedang mencapai batas kuota sementara (Rate Limit). Silakan coba lagi dalam beberapa detik.";
-                    } else {
-                        friendlyMessage = parsed.error.message;
-                    }
+                if (parsed.error && (parsed.error.code === 429 || lastErrorText.includes("rate-limited"))) {
+                    friendlyMessage = "Semua model gratis sedang penuh (Rate Limit). Silakan coba lagi dalam beberapa detik.";
                 }
             } catch (_) {}
 
@@ -104,7 +101,7 @@ app.post(["/api/chat", "/chat"], async (req, res) => {
             });
         }
 
-        // Header untuk streaming
+        // Header untuk streaming SSE
         res.setHeader("Content-Type", "text/event-stream");
         res.setHeader("Cache-Control", "no-cache");
         res.setHeader("Connection", "keep-alive");
